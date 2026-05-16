@@ -2,8 +2,8 @@ package com.amalitech.idempotency.controller;
 
 import com.amalitech.idempotency.dto.PaymentRequest;
 import com.amalitech.idempotency.dto.PaymentResponse;
+import com.amalitech.idempotency.service.IdempotencyResult;
 import com.amalitech.idempotency.service.IdempotencyService;
-import com.amalitech.idempotency.store.CachedResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +27,12 @@ public class PaymentController {
     public ResponseEntity<PaymentResponse> process(
             @RequestHeader("Idempotency-Key") @NotBlank String key,
             @Valid @RequestBody PaymentRequest body) {
-        CachedResponse result = service.handle(key, body);
-        return ResponseEntity.status(result.statusCode()).body(result.body());
+        IdempotencyResult result = service.handle(key, body);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(result.entry().statusCode());
+        if (result.cacheHit()) {
+            // Per User Story 2: signal that this is a replayed response.
+            builder.header("X-Cache-Hit", "true");
+        }
+        return builder.body(result.entry().body());
     }
 }
