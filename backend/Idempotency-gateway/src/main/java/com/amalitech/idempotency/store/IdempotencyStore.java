@@ -5,9 +5,13 @@ import java.util.Optional;
 
 public interface IdempotencyStore {
 
-    Optional<CachedResponse> get(String key);
+    Optional<StoreEntry> get(String key);
 
-    void put(String key, CachedResponse entry);
+    Optional<StoreEntry> putIfAbsent(String key, StoreEntry entry);
+
+    void put(String key, StoreEntry entry);
+
+    void remove(String key);
 
     int sweepExpired(Instant cutoff);
 
