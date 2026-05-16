@@ -1,6 +1,7 @@
 package com.amalitech.idempotency.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -38,6 +39,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ApiError> handleHandlerValidation(HandlerMethodValidationException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "Validation failed: " + ex.getMessage(), req);
+    }
+
+    // Spring 6.2 sometimes raises ConstraintViolationException directly instead of
+    // HandlerMethodValidationException; map it to the same 400 response.
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest req) {
+        String details = ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .collect(Collectors.joining("; "));
+        return build(HttpStatus.BAD_REQUEST, "Validation failed: " + details, req);
     }
 
     private ResponseEntity<ApiError> build(HttpStatus status, String message, HttpServletRequest req) {
