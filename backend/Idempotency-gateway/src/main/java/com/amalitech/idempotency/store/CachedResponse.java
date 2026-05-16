@@ -9,5 +9,5 @@ public record CachedResponse(
         PaymentResponse body,
         String bodyHash,
         Instant createdAt
-) {
+) implements StoreEntry {
 }
