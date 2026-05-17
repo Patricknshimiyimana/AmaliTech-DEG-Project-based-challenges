@@ -2,8 +2,15 @@ package com.amalitech.idempotency.controller;
 
 import com.amalitech.idempotency.dto.PaymentRequest;
 import com.amalitech.idempotency.dto.PaymentResponse;
+import com.amalitech.idempotency.exception.ApiError;
 import com.amalitech.idempotency.service.IdempotencyResult;
 import com.amalitech.idempotency.service.IdempotencyService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +31,32 @@ public class PaymentController {
     }
 
     @PostMapping("/process-payment")
+    @Operation(summary = "Process a payment with idempotency guarantees")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Processed (or replayed; see X-Cache-Hit header)"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Validation failed: missing/blank Idempotency-Key or invalid body",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Idempotency-Key reused with a different request body",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))
+            )
+    })
     public ResponseEntity<PaymentResponse> process(
-            @RequestHeader("Idempotency-Key") @NotBlank String key,
+            @RequestHeader("Idempotency-Key")
+            @NotBlank
+            @Parameter(
+                    description = "Client-generated unique value (e.g. UUID v4) for this payment attempt. "
+                            + "Reuse the same value on retries of the same intent; generate a new one for a new payment.",
+                    example = "550e8400-e29b-41d4-a716-446655440000"
+            )
+            String key,
             @Valid @RequestBody PaymentRequest body) {
         IdempotencyResult result = service.handle(key, body);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(result.entry().statusCode());
