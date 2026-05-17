@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: idempotency-gateway
+
+server:
+  port: 8080
+
+idempotency:
+  ttl: PT24H              # 24 hours — how long a key remains replayable
+  sweep-interval: PT1H    # 1 hour  — how often the cleanup job runs
